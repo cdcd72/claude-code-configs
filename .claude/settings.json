@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git add -A && git commit -m 'backup: before Claude edit' --allow-empty || true"
+            "command": "git add -A && git commit -m 'backup: before Claude Code edit' --allow-empty || true"
           }
         ]
       },
