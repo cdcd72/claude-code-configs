@@ -1,0 +1,22 @@
+{
+  "env": {
+    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1",
+    "POWERSHELL_TELEMETRY_OPTOUT": "1"
+  },
+  "defaultShell": "powershell",
+  "permissions": {
+    "allow": [
+      "PowerShell",
+      "Read",
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Glob",
+      "WebFetch",
+      "WebSearch",
+      "NotebookRead",
+      "NotebookEdit"
+    ],
+    "deny": ["Bash"]
+  }
+}
