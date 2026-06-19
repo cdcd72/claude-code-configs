@@ -26,6 +26,12 @@ function isDangerousCommand(command) {
     /\bmkfs(\.\w+)?\b/,
     /\bshutdown\b/,
     /\breboot\b/,
+    /\bRemove-Item\b[^\r\n]*\s-(?:Recurse|r)\b[^\r\n]*\s-(?:Force|f)\b/i,
+    /\bRemove-Item\b[^\r\n]*\s-(?:Force|f)\b[^\r\n]*\s-(?:Recurse|r)\b/i,
+    /\bClear-Disk\b/i,
+    /\bFormat-Volume\b/i,
+    /\bStop-Computer\b/i,
+    /\bRestart-Computer\b/i,
   ];
 
   return rules.some((rule) => rule.test(command));
