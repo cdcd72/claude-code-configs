@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PROJECT_DIR}/.claude/hooks/block-dangerous.js"
+            "command": "node .claude/hooks/block-dangerous.js"
           }
         ]
       }
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PROJECT_DIR}/.claude/hooks/format-lint.js"
+            "command": "node .claude/hooks/format-lint.js"
           }
         ]
       }
