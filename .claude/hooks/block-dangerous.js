@@ -20,7 +20,6 @@ function isDangerousCommand(command) {
   const rules = [
     /\brm\s+(-[^\s]*r[^\s]*f|-.[^\s]*f[^\s]*r)\b/, // rm -rf / rm -fr
     /\brm\s+-r\s+\/\b/, // rm -r /
-    /\brm\s+(-[^\s]*r[^\s]*f|-.[^\s]*f[^\s]*r)\s+\/\b/, // rm -rf /
     /\bsudo\s+rm\s+(-[^\s]*r[^\s]*f|-.[^\s]*f[^\s]*r)\b/,
     /\bdd\s+.*\bof=\/dev\//,
     /\bmkfs(\.\w+)?\b/,
