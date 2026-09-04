@@ -12,3 +12,6 @@ Desktop.ini
 
 # Node modules (if any)
 node_modules/
+
+# 本機開發用的 Project Scope 設定，由 scripts/sync-claude-scope.ps1 -Scope Project -TargetRepo . 產生
+/.claude/

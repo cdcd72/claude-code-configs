@@ -1,81 +1,69 @@
 # Claude Code 設定
 
-本儲存庫用於集中管理 Claude Code 的自訂環境設定與工作流程，包含設定檔、命令定義、掛鉤腳本與安全限制。
+集中管理 Claude Code 的自訂設定。依「作用範圍（scope）」分成兩份，各自帶一個獨立的 `.claude/`；Claude Code 執行時會合併兩層，兩邊的 hook 同時作用。
 
-## 目前結構
+| Scope       | 目錄               | 套用位置                                             | 內容                                                           |
+| ----------- | ------------------ | ---------------------------------------------------- | -------------------------------------------------------------- |
+| **User**    | `user/.claude/`    | 同步到 `%USERPROFILE%\.claude`，對該帳號所有專案生效 | 與專案無關的機器層級設定：shell 偏好、危險指令攔截、共用子代理 |
+| **Project** | `project/.claude/` | 疊進某個 repo 的 `.claude/`，只對該 repo 生效        | 依賴專案工具鏈的設定：寫檔後的 format / lint                   |
+
+## 結構
 
 ```text
-.
-├─ .claude/
-│  ├─ commands/
-│  │  ├─ commit-push-pr.md
-│  │  ├─ commit-push.md
-│  │  ├─ commit.md
-│  │  ├─ review.md
-│  │  └─ test.md
-│  ├─ hooks/
-│  │  ├─ block-dangerous.js
-│  │  └─ format-lint.js
-│  └─ settings.json
-├─ CLAUDE.md
-├─ LICENSE
-└─ README.md
+user/.claude/
+├─ settings.json                             # env / defaultShell / permissions（deny Bash）/ PreToolUse
+├─ CLAUDE.md                                 # PowerShell 優先的環境規則
+├─ hooks/block-dangerous.js                  # PreToolUse：攔截危險指令
+└─ agents/generic-test-quality-reviewer.md   # 語言/框架無關的測試品質審查子代理
+project/.claude/
+├─ settings.json                             # PostToolUse
+└─ hooks/format-lint.js                      # 寫檔後 format / lint
+scripts/sync-claude-scope.ps1                # 同步腳本
+sdd/                                         # SDD 流程紀錄（提案 / 任務清單）
 ```
 
-## 目錄與檔案說明
+## 同步腳本 `scripts/sync-claude-scope.ps1`
 
-- `.claude/settings.json`：Claude Code 的主要設定檔。
-  - 強制使用 PowerShell 作為預設 shell。
-  - 啟用 PowerShell 相關權限，禁止使用 Bash。
-  - 註冊 `PreToolUse` / `PostToolUse` / `Stop` hooks，提供安全檢查與自動整理流程。
+需要 PowerShell 7+。所有模式都不會改動來源檔案。
 
-- `.claude/commands/`：自訂指令模板，提供常見開發流程。
-  - `commit.md`：執行提交流程，依照 Conventional Commits 規範。
-  - `commit-push.md`：補充提交後推送流程。
-  - `commit-push-pr.md`：整合提交、推送與建立 PR 的流程。
-  - `review.md`：執行程式碼審查與問題診斷。
-  - `test.md`：執行測試、修復失敗案例與補充測試。
+`-WhatIf` / `-Diff` / `-Force` / `-Uninstall` 對兩種 scope 皆適用；其中 `-WhatIf`、`-Diff`、`-Uninstall` 三者互斥。同步後會在目標寫入 `.claude-scope-sync.json`（受管理檔案 + SHA-256），供 `-Uninstall` 判斷；被使用者改過的檔案不會被移除。
 
-- `.claude/hooks/`：Claude Code 執行前後的自動化掛鉤。
-  - `block-dangerous.js`：阻止危險指令（例如 `rm -rf /`、`mkfs`、`shutdown` 等）。
-  - `format-lint.js`：在檔案寫入後，自動執行 Prettier / ESLint 修正（若環境支援）。
+### User Scope
 
-- `CLAUDE.md`：本倉庫的 Claude 專用規則與開發限制說明。
+同步 `user/.claude/` 到 `%USERPROFILE%\.claude`，並把 `settings.json` 裡 hook 的佔位路徑改寫成實際絕對路徑。
 
-- `LICENSE`：專案授權條款。
+```powershell
+pwsh -NoProfile -File .\scripts\sync-claude-scope.ps1 -Scope User -WhatIf     # 預覽
+pwsh -NoProfile -File .\scripts\sync-claude-scope.ps1 -Scope User -Diff       # 看差異
+pwsh -NoProfile -File .\scripts\sync-claude-scope.ps1 -Scope User             # 同步（內容不同又沒 -Force 的會跳過）
+pwsh -NoProfile -File .\scripts\sync-claude-scope.ps1 -Scope User -Force       # 覆蓋，先備份到 .claude-scope-backups\<時間戳>\
+pwsh -NoProfile -File .\scripts\sync-claude-scope.ps1 -Scope User -Uninstall   # 移除本腳本管理的檔案
+```
 
-## 主要功能
+目標預設 `%USERPROFILE%\.claude`，可用 `-UserScopePath <路徑>` 覆寫。
 
-### 1. PowerShell 優先環境
+### Project Scope
 
-這個設定偏好在 Windows 環境下使用 PowerShell，避免不必要的 Bash 相依，並在設定中明確限制危險操作。
+疊 `project/.claude/` 進指定 repo 的 `.claude/`，`-TargetRepo` 必填。
 
-### 2. 危險命令防護
+```powershell
+pwsh -NoProfile -File .\scripts\sync-claude-scope.ps1 -Scope Project -TargetRepo C:\path\to\repo
+```
 
-透過 `block-dangerous.js`，可以在 Claude 執行工具指令前攔截高風險命令，降低誤操作風險。
+### 本 repo 開發
 
-### 3. 自動化開發流程
+根目錄 `.claude/` 已被 `.gitignore` 忽略。要在本 repo 內啟用 format-lint hook：
 
-透過 `commands/` 與 hooks，這個專案整合了：
+```powershell
+pwsh -NoProfile -File .\scripts\sync-claude-scope.ps1 -Scope Project -TargetRepo .
+```
 
-- 提交流程
-- 程式碼審查流程
-- 測試流程
-- 格式化與 lint 修正
+## Hook 行為
 
-## 快速上手
+- **`block-dangerous.js`**（PreToolUse，`Bash|PowerShell`）：指令執行前比對，命中即以 exit 2 擋下。涵蓋 `rm -rf`、`dd of=/dev/*`、`mkfs`、`shutdown`/`reboot`、`Remove-Item -Recurse -Force`、`Format-Volume`、`Clear-Disk`、`Stop-Computer`/`Restart-Computer`。
+- **`format-lint.js`**（PostToolUse，`Edit|Write`）：偵測不到 `package.json` 或 pnpm 就跳過。對目標檔跑 `pnpm prettier --write`（失敗不阻斷），js/ts/svelte 再跑 `pnpm eslint --fix`；修完仍有 error 時以 exit 2 回報。
 
-1. 直接將此倉庫作為 Claude Code 的設定範本使用。
-2. 若要調整環境行為，可修改 `.claude/settings.json`。
-3. 若要新增或調整開發流程，可在 `.claude/commands/` 新增指令檔。
-4. 若要強化安全或品質檢查，可在 `.claude/hooks/` 加入新的掛鉤腳本。
+## 維護
 
-## 維護建議
-
-- 新增或修改命令、掛鉤或設定後，請同步更新本 README。
-- 若新增新的自動化流程，請確認其行為與現有工作流程兼容。
-- 保持安全規則與品質檢查保持可控，避免過度放寬權限。
-
-## 貢獻
-
-歡迎針對設定、流程與安全規則提出建議或改善內容。
+- 設定依性質放進對應 scope 目錄，不要混進同一份 `settings.json`。
+- 改動後同步更新本 README。

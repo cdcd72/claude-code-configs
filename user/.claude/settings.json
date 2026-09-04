@@ -26,18 +26,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/block-dangerous.js"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node .claude/hooks/format-lint.js"
+            "command": "node",
+            "args": ["C:\\Users\\{User}\\.claude\\hooks\\block-dangerous.js"]
           }
         ]
       }
