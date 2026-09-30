@@ -19,6 +19,7 @@ project/.claude/
 ├─ settings.json                             # PostToolUse
 └─ hooks/format-lint.js                      # 寫檔後 format / lint
 scripts/sync-claude-scope.ps1                # 同步腳本
+tests/block-dangerous.test.js                # block-dangerous.js 的測試
 sdd/                                         # SDD 流程紀錄（提案 / 任務清單）
 ```
 
@@ -60,8 +61,28 @@ pwsh -NoProfile -File .\scripts\sync-claude-scope.ps1 -Scope Project -TargetRepo
 
 ## Hook 行為
 
-- **`block-dangerous.js`**（PreToolUse，`Bash|PowerShell`）：指令執行前比對，命中即以 exit 2 擋下。涵蓋 `rm -rf`、`dd of=/dev/*`、`mkfs`、`shutdown`/`reboot`、`Remove-Item -Recurse -Force`、`Format-Volume`、`Clear-Disk`、`Stop-Computer`/`Restart-Computer`。
+- **`block-dangerous.js`**（PreToolUse，`Bash|PowerShell`）：指令執行前檢查，命中即以 exit 2 擋下。
+  - 遞迴刪除（`Remove-Item` 與 `ri`/`rm`/`rmdir`/`rd`/`del`/`erase`，含 cmd 的 `/s`）依目標路徑判斷：專案內的明確子路徑放行；專案外、專案本身或其上層、`.git`、磁碟根、家目錄，以及含變數或萬用字元、無明確目標者擋下。
+  - git：擋 `clean -f`、`reset --hard`、`push --force`/`-f`/`+refspec`。
+  - 固定規則：`dd of=/dev/*`、`mkfs`、`shutdown`/`reboot`、`Format-Volume`、`Clear-Disk`、`Stop-Computer`/`Restart-Computer`。
+  - fail-closed：引號未配對、stdin 異常或缺少 command 一律擋下。
 - **`format-lint.js`**（PostToolUse，`Edit|Write`）：偵測不到 `package.json` 或 pnpm 就跳過。對目標檔跑 `pnpm prettier --write`（失敗不阻斷），js/ts/svelte 再跑 `pnpm eslint --fix`；修完仍有 error 時以 exit 2 回報。
+
+## 測試
+
+`block-dangerous.js` 有輸入輸出測試（Node 內建 `node:test`，不需安裝套件）。在 repo 根目錄執行：
+
+```powershell
+node --test
+```
+
+以環境變數 `HOOK_PATH` 可改測其他版本的 hook，例如確認修改前的舊版會讓測試失敗：
+
+```powershell
+$env:HOOK_PATH = 'C:\path\to\block-dangerous.js'; node --test
+```
+
+`tests/` 在 repo 根目錄，不屬於任何 scope，不會被同步腳本複製出去。
 
 ## 維護
 
